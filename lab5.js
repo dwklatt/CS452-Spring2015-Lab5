@@ -60,6 +60,44 @@ var bottom = -2.0;
 var modeViewMatrix, projectionMatrix;
 var modelViewMatrixLoc, projectionMatrixLoc;
 
+var vertices = [
+	vec3( -0.5, -0.5,  0.5 ),
+	vec3( -0.5,  0.5,  0.5 ),
+	vec3(  0.5,  0.5,  0.5 ),
+	vec3(  0.5, -0.5,  0.5 ),
+	vec3( -0.5, -0.5, -0.5 ),
+	vec3( -0.5,  0.5, -0.5 ),
+	vec3(  0.5,  0.5, -0.5 ),
+	vec3(  0.5, -0.5, -0.5 )
+];
+
+var vertexColors = [
+  vec4( 0.0, 0.0, 0.0, 1.0 ),  // black
+	vec4( 1.0, 0.0, 0.0, 1.0 ),  // red
+	vec4( 1.0, 1.0, 0.0, 1.0 ),  // yellow
+	vec4( 0.0, 1.0, 0.0, 1.0 ),  // green
+	vec4( 0.0, 0.0, 1.0, 1.0 ),  // blue
+	vec4( 1.0, 0.0, 1.0, 1.0 ),  // magenta
+	vec4( 1.0, 1.0, 1.0, 1.0 ),  // white
+	vec4( 0.0, 1.0, 1.0, 1.0 )   // cyan
+];
+
+var numVertices  = 36;
+var indices = [
+	1, 0, 3,
+	3, 2, 1,
+	2, 3, 7,
+	7, 6, 2,
+	3, 0, 4,
+	4, 7, 3,
+	6, 5, 1,
+	1, 2, 6,
+	4, 5, 6,
+	6, 7, 4,
+	5, 4, 0,
+	0, 1, 5
+];
+
 window.onload = function init()
 {
     var canvas = document.getElementById( "gl-canvas" );
@@ -95,7 +133,33 @@ window.onload = function init()
     //
     var program = initShaders( gl, "vertex-shader", "fragment-shader" );
     gl.useProgram( program );
+ 
+ 		// Cube
+		var iBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
     
+    // color cube array atrribute buffer
+    
+    var cBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertexColors), gl.STATIC_DRAW );
+
+    var vColor = gl.getAttribLocation( program, "vColor" );
+    gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
+  	gl.enableVertexAttribArray( vColor );
+
+    // vertex cube array attribute buffer
+    
+    var vBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
+
+    var vPosition = gl.getAttribLocation( program, "vPosition" );
+    gl.vertexAttribPointer( vPosition, 3, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPosition );
+		
+		//hat thing
     ambientProduct = mult(lightAmbient, materialAmbient);
     diffuseProduct = mult(lightDiffuse, materialDiffuse);
     specularProduct = mult(lightSpecular, materialSpecular);
@@ -104,9 +168,9 @@ window.onload = function init()
     gl.bindBuffer( gl.ARRAY_BUFFER, vBufferId );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
     
-    var vPosition = gl.getAttribLocation( program, "vPosition" );
-    gl.vertexAttribPointer( vPosition, 4, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPosition );
+    var vPosition2 = gl.getAttribLocation( program, "vPosition2" );
+    gl.vertexAttribPointer( vPosition2, 4, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPosition2 );
     
     fColor = gl.getUniformLocation(program, "fColor");
  
@@ -143,7 +207,7 @@ window.onload = function init()
        "lightPosition"),flatten(lightPosition) );
     gl.uniform1f( gl.getUniformLocation(program, 
        "shininess"),materialShininess );
-
+		
     render();
 }
 
@@ -171,7 +235,7 @@ function render()
         gl.drawArrays( gl.LINE_LOOP, i, 4 );
     }
     
-
+		gl.drawElements( gl.TRIANGLES, numVertices, gl.UNSIGNED_BYTE, 0 );
     requestAnimFrame(render);
 }
 

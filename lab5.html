@@ -1,9 +1,12 @@
 <!-- Derek Klatt 4/18 Lab 5-->
+<!DOCTYPE html>
 <html>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec4 vPosition;
+attribute vec4 vPosition2;
 attribute vec4 vNormal;
+attribute vec4 vColor;
 
 varying vec4 fColor;
 
@@ -58,6 +61,8 @@ main()
     fColor = ambient + diffuse +specular;
 
     fColor.a = 1.0;
+
+		fColor = vColor;
 }
 </script>
 
