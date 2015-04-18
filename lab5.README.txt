@@ -1,1 +1,2 @@
 name, date, description
+Derek Klatt, 4/18, lab 3 with a rectangle and shadow mapping
