@@ -1,4 +1,4 @@
-//Derek Klatt 4/18 lab 5
+//Derek Klatt 4/18 Lab 5
 var gl;
 
 var lightPosition = vec4(1.0, 1.0, 1.0, 0.0 );
@@ -57,46 +57,69 @@ var right = 2.0;
 var ytop = 2.0;
 var bottom = -2.0;
 
-var modeViewMatrix, projectionMatrix;
+var modelViewMatrix, projectionMatrix;
 var modelViewMatrixLoc, projectionMatrixLoc;
 
-var vertices = [
-	vec3( -0.5, -0.5,  0.5 ),
-	vec3( -0.5,  0.5,  0.5 ),
-	vec3(  0.5,  0.5,  0.5 ),
-	vec3(  0.5, -0.5,  0.5 ),
-	vec3( -0.5, -0.5, -0.5 ),
-	vec3( -0.5,  0.5, -0.5 ),
-	vec3(  0.5,  0.5, -0.5 ),
-	vec3(  0.5, -0.5, -0.5 )
+var texSize = 256;
+var numChecks = 16;
+var texCoordsArray = [];
+var normalsArray = [];
+var texture1, texture2;
+var texCoord = [
+vec2(0, 0),
+vec2(0, 1),
+vec2(1, 1),
+vec2(1, 0)
 ];
 
-var vertexColors = [
-  vec4( 0.0, 0.0, 0.0, 1.0 ),  // black
-	vec4( 1.0, 0.0, 0.0, 1.0 ),  // red
-	vec4( 1.0, 1.0, 0.0, 1.0 ),  // yellow
-	vec4( 0.0, 1.0, 0.0, 1.0 ),  // green
-	vec4( 0.0, 0.0, 1.0, 1.0 ),  // blue
-	vec4( 1.0, 0.0, 1.0, 1.0 ),  // magenta
-	vec4( 1.0, 1.0, 1.0, 1.0 ),  // white
-	vec4( 0.0, 1.0, 1.0, 1.0 )   // cyan
-];
+function configureTexture() {
+	texture1 = gl.createTexture();
+	gl.bindTexture( gl.TEXTURE_2D, texture1 );
+	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, image1);
+	gl.generateMipmap( gl.TEXTURE_2D );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+	gl.NEAREST_MIPMAP_LINEAR );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	texture2 = gl.createTexture();
+	gl.bindTexture( gl.TEXTURE_2D, texture2 );
+	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, image2);
+	gl.generateMipmap( gl.TEXTURE_2D );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+	gl.NEAREST_MIPMAP_LINEAR );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+}
 
-var numVertices  = 36;
-var indices = [
-	1, 0, 3,
-	3, 2, 1,
-	2, 3, 7,
-	7, 6, 2,
-	3, 0, 4,
-	4, 7, 3,
-	6, 5, 1,
-	1, 2, 6,
-	4, 5, 6,
-	6, 7, 4,
-	5, 4, 0,
-	0, 1, 5
-];
+var image1 = new Uint8Array(4*texSize*texSize);
+for ( var i = 0; i < texSize; i++ ) {
+	for ( var j = 0; j <texSize; j++ ) {
+		var patchx = Math.floor(i/(texSize/numChecks));
+		if(patchx%2) c = 255;
+		else c = 0;
+		image1[4*i*texSize+4*j] = c;
+		image1[4*i*texSize+4*j+1] = c;
+		image1[4*i*texSize+4*j+2] = c;
+		image1[4*i*texSize+4*j+3] = 255;
+	}
+}
+var image2 = new Uint8Array(4*texSize*texSize);
+// Create a checkerboard pattern
+for ( var i = 0; i < texSize; i++ ) {
+	for ( var j = 0; j <texSize; j++ ) {
+		var patchy = Math.floor(j/(texSize/numChecks));
+		if(patchy%2) c = 255;
+		else c = 0;
+		image2[4*i*texSize+4*j] = c;
+		image2[4*i*texSize+4*j+1] = c;
+		image2[4*i*texSize+4*j+2] = c;
+		image2[4*i*texSize+4*j+3] = 255;
+	}
+}
+
+var hatVertices = 0;
+var light;
+var m;
 
 window.onload = function init()
 {
@@ -117,6 +140,15 @@ window.onload = function init()
     gl.enable(gl.POLYGON_OFFSET_FILL);
     gl.polygonOffset(1.0, 2.0);
 
+		light = vec3(0.0, 2.0, 0.0);
+
+		// matrix for shadow projection
+
+		m = mat4();
+		m[3][3] = 0;
+		m[3][1] = -1/light[1];
+	
+
 // vertex array of nRows*nColumns quadrilaterals 
 // (two triangles/quad) from data
     
@@ -126,54 +158,34 @@ window.onload = function init()
             pointsArray.push( vec4(2*(i+1)/nRows-1, data[i+1][j], 2*j/nColumns-1, 1.0)); 
             pointsArray.push( vec4(2*(i+1)/nRows-1, data[i+1][j+1], 2*(j+1)/nColumns-1, 1.0));
             pointsArray.push( vec4(2*i/nRows-1, data[i][j+1], 2*(j+1)/nColumns-1, 1.0) );
-    }
-}
+						hatVertices+=4;
+    	}
+		}
     //
     //  Load shaders and initialize attribute buffers
     //
     var program = initShaders( gl, "vertex-shader", "fragment-shader" );
     gl.useProgram( program );
- 
- 		// Cube
-		var iBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
-    
-    // color cube array atrribute buffer
-    
-    var cBuffer = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertexColors), gl.STATIC_DRAW );
 
-    var vColor = gl.getAttribLocation( program, "vColor" );
-    gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
-  	gl.enableVertexAttribArray( vColor );
-
-    // vertex cube array attribute buffer
-    
-    var vBuffer = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
-
-    var vPosition = gl.getAttribLocation( program, "vPosition" );
-    gl.vertexAttribPointer( vPosition, 3, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPosition );
-		
-		//hat thing
     ambientProduct = mult(lightAmbient, materialAmbient);
     diffuseProduct = mult(lightDiffuse, materialDiffuse);
     specularProduct = mult(lightSpecular, materialSpecular);
+
+		pointsArray.push(vec4( -0.5, 0.5,  -0.5, 1.0 ));     
+		pointsArray.push(vec4( -0.5,  0.5,  0.5, 1.0 ));  
+		pointsArray.push(vec4( 0.5, 0.5,  0.5, 1.0 ));
+		pointsArray.push(vec4( 0.5,  0.5,  -0.5, 1.0 ));
 
     var vBufferId = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, vBufferId );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
     
-    var vPosition2 = gl.getAttribLocation( program, "vPosition2" );
-    gl.vertexAttribPointer( vPosition2, 4, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPosition2 );
-    
-    fColor = gl.getUniformLocation(program, "fColor");
- 
+    var vPosition = gl.getAttribLocation( program, "vPosition" );
+    gl.vertexAttribPointer( vPosition, 4, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPosition );
+
+		fColor = gl.getUniformLocation(program, "fColor");
+
     modelViewMatrixLoc = gl.getUniformLocation( program, "modelViewMatrix" );
     projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
     window.onkeydown = function( event ) {
@@ -196,7 +208,15 @@ window.onload = function init()
           break;
       } 
     }
-    
+
+		configureTexture();
+		gl.activeTexture( gl.TEXTURE0 );
+		gl.bindTexture( gl.TEXTURE_2D, texture1 );
+		gl.uniform1i(gl.getUniformLocation( program, "Tex0"), 0);
+		gl.activeTexture( gl.TEXTURE1 );
+		gl.bindTexture( gl.TEXTURE_2D, texture2 );
+		gl.uniform1i(gl.getUniformLocation( program, "Tex1"), 1);
+
     gl.uniform4fv( gl.getUniformLocation(program, 
        "ambientProduct"),flatten(ambientProduct) );
     gl.uniform4fv( gl.getUniformLocation(program, 
@@ -207,20 +227,28 @@ window.onload = function init()
        "lightPosition"),flatten(lightPosition) );
     gl.uniform1f( gl.getUniformLocation(program, 
        "shininess"),materialShininess );
-		
+
     render();
 }
 
 function render()
 {
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
+ 
+
     var eye = vec3( radius*Math.sin(theta)*Math.cos(phi), 
                     radius*Math.sin(theta)*Math.sin(phi),
                     radius*Math.cos(theta));
-    
-    modelViewMatrix = lookAt( eye, at, up );
-    projectionMatrix = ortho( left, right, bottom, ytop, near, far );
+		
+		modelViewMatrix = lookAt(eye, at, up);
+
+		light[0] = Math.sin(theta);
+		light[2] = Math.cos(theta);
+
+    modelViewMatrix = mult(modelViewMatrix, translate(light[0], light[1], light[2]));
+		modelViewMatrix = mult(modelViewMatrix, m);
+		modelViewMatrix = mult(modelViewMatrix, translate(-light[0], -light[1], -light[2]));
+		projectionMatrix = ortho( left, right, bottom, ytop, near, far );
     
     gl.uniformMatrix4fv( modelViewMatrixLoc, false, flatten(modelViewMatrix) );
     gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten(projectionMatrix) );
@@ -228,14 +256,15 @@ function render()
     // draw each quad as two filled red triangles
     // and then as two black line loops
     
-    for(var i=0; i<pointsArray.length; i+=4) { 
+    for(var i=0; i<hatVertices; i+=4) { 
         gl.uniform4fv(fColor, flatten(red));
         gl.drawArrays( gl.TRIANGLE_FAN, i, 4 );
         gl.uniform4fv(fColor, flatten(black));
         gl.drawArrays( gl.LINE_LOOP, i, 4 );
     }
-    
-		gl.drawElements( gl.TRIANGLES, numVertices, gl.UNSIGNED_BYTE, 0 );
+   
+	 	gl.drawArrays(gl.TRIANGLES, 0 ,4);
+
     requestAnimFrame(render);
 }
 
